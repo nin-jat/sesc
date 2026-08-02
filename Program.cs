@@ -11,27 +11,46 @@ using System.Collections.Generic;
 
 class Program {
   static int Main(string[] args) {
-    // Exit if there's no provided ingame script.
-    if (args.Length != 1) {
-      Console.WriteLine("No file was provided.");
-      Console.WriteLine($"Usage: {AppDomain.CurrentDomain.FriendlyName} [script file]");
-      return 1;
+
+    List<string> codeLines = null;
+
+    // If the user needs help. Give them help!
+    if (args.Contains("--help") || args.Contains("-h")) {
+      Console.WriteLine(HELP_TEXT);
+      return 0;
     }
 
-    // Get the provided ingame script.
-    string scriptPath = args[0];
-    if (!File.Exists(scriptPath)) {
-      Console.WriteLine($"File not found: {scriptPath}");
+    string filePath = args.FirstOrDefault(arg => !arg.StartsWith('-')) ?? "unknown_file";
+    bool editorOutput = args.Contains("--editor") || args.Contains("-e");
+
+    // Read the code from stdin.
+    if (Console.IsInputRedirected) {
+      using (var reader = new StreamReader(Console.OpenStandardInput())) {
+        string line;
+        codeLines = new List<string>();
+        while ((line = reader.ReadLine()) != null) {
+          codeLines.Add(line);
+        }
+      }
+    }
+    // Read from provided file.
+    else if (args.Length > 0) {
+      if (File.Exists(filePath)) {
+        codeLines = File.ReadAllLines(filePath).ToList();
+      } else {
+        Console.WriteLine($"File '{filePath}' not found");
+        return 1;
+      }
+    }
+    else {
+      Console.WriteLine(HELP_TEXT);
       return 1;
     }
-    // Get the user's code as an array of lines (used for messages) from the provided file.
-    string[] userCode = File.ReadAllLines(scriptPath);
 
     // Insert the user's code between the in-game script's prefix and suffix.
     // This creates valid C# code that will compile.
     // TODO: Write this to a file (or pipe it) so regular C# tools can work with this.
-    string wrappedCode = string.Concat(IGS_PREFIX, string.Join('\n', userCode), IGS_SUFFIX);
-    // File.WriteAllText("temp.txt", wrappedCode);
+    string wrappedCode = string.Concat(IGS_PREFIX, string.Join('\n', codeLines), IGS_SUFFIX);
 
     // This list stores all the dependencies/refrences/dlls required to compile an inagme script.
     var references = new List<MetadataReference>();
@@ -90,7 +109,7 @@ class Program {
 
         // Extract the position of the error on the line.
         int col = lineSpan.StartLinePosition.Character;
-        int width = lineSpan.EndLinePosition.Character - lineSpan.StartLinePosition.Character;
+        int width = int.Max(1, lineSpan.EndLinePosition.Character - lineSpan.StartLinePosition.Character);
         string pos = $"({adjustedLine + 1}:{col + 1})";
 
         // Set the colours if we need to.
@@ -104,20 +123,24 @@ class Program {
         }
 
         // Just work with errors from the user's code.
-        if(adjustedLine >= 0 && adjustedLine < userCode.Length) {
+        if(adjustedLine >= 0 && adjustedLine < codeLines.Count) {
 
           // Write the error to the console.
-          
-          // Pretty lines won't work for nvim users who don't want to configure everything.
-          //Console.WriteLine(
-          //  $"{pos}: {diagnostic.Severity} {diagnostic.Id}: {diagnostic.GetMessage()}");
-        
-          // nvim errorformat compatible messages.
-          Console.WriteLine($"{scriptPath}:{adjustedLine + 1}:{col + 1}: {diagnostic.Severity} {diagnostic.Id}: {diagnostic.GetMessage()}");
-          
-          // Add the acutal line and an indicator to help the freshies out.
-          Console.WriteLine($"    {userCode[adjustedLine]}");
-          Console.WriteLine($"    {new string(' ', col)}{new string('^', width + 1)}");
+          if (editorOutput) {
+            Console.WriteLine(string.Join(':',
+                  filePath,
+                  (adjustedLine + 1).ToString(),
+                  (col + 1).ToString(),
+                  (col + 1 + width).ToString(),
+                  diagnostic.Severity,
+                  diagnostic.GetMessage()
+            ));
+          } else {
+            Console.WriteLine($"{pos}: {diagnostic.Severity} {diagnostic.Id}: {diagnostic.GetMessage()}");
+            // Add the acutal line and an indicator to help the freshies out.
+            Console.WriteLine($"    {codeLines[adjustedLine]}");
+            Console.WriteLine($"    {new string(' ', col)}{new string('^', width)}");
+          }
         }
         else if (diagnostic.Severity != DiagnosticSeverity.Hidden) {
           Console.WriteLine($"Internal Error: {diagnostic}");
@@ -128,7 +151,7 @@ class Program {
 
       // Let the user know it's all okay and exit successfully.
       if (result.Success) {
-        Console.WriteLine($"Compiled '{scriptPath}' successfully");
+        Console.WriteLine($"Compiled '{args[0]}' successfully");
         return 0;
       }
       // Rats!, it didn't compile. Exit bad.
@@ -228,25 +251,44 @@ class Program {
     return references;
   }
 
-  // How many lines is inside the prefix.:
-  const int IGS_PREFIX_LINES = 22;
+  const string HELP_TEXT =@"Space Engineers Script Checker.
+https://github.com/nin-jat/sesc
 
-  const string IGS_PREFIX = @"using System;
+This is a small utilitiy checks your in-game scripts for common issues.
+Your scripts can be written exactly like you see it in-game, so no need
+for getting dependencies or adding using or mucking around with
+templates.
+
+Usage: sesc [options] script_file
+Options:
+  -e  --editor    Format the output suitable for editors and other tools.
+                      (script_file:line:col_start:col_end:error_type:message)
+  -h  --help      Get this help text.";
+
+  // How many lines is inside the prefix.:
+  const int IGS_PREFIX_LINES = 26;
+
+  const string IGS_PREFIX =
+@"using Sandbox.Game.EntityComponents;
+using Sandbox.ModAPI.Ingame;
+using Sandbox.ModAPI.Interfaces;
+using SpaceEngineers.Game.ModAPI.Ingame;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-using Sandbox.Game.EntityComponents;
-using Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-using SpaceEngineers.Game.ModAPI.Ingame;
+using VRage;
 using VRage.Collections;
 using VRage.Game;
 using VRage.Game.Components;
+using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI.Ingame;
+using VRage.Game.ModAPI.Ingame.Utilities;
 using VRage.Game.ObjectBuilders.Definitions;
 using VRageMath;
+
 
 namespace IngameScript
 {
