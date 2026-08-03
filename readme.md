@@ -1,13 +1,11 @@
 # Space Engineers Script Checker
 
-This is a small utilitiy checks your in-game scripts for common issues.
-Your scripts can be written exactly like you see it in-game, so no need
-for getting dependencies or adding using or mucking around with
-templates.
+This is a small utilitiy that checks your in-game scripts for common issues.
+Your scripts can be written exactly like you see it in-game, so no need for getting dependencies or mucking around with templates.
 
 Currently only tested on linux, *should* work on windows.
 
-Unlike the awesom [Malware's devkit for SE (MDK²-SE)](https://github.com/malforge/mdk2) tools. This is a very basic tool for smashing out a quick and dirty script or vibe coding your way around a survival game. It's lacking some of the features provided by MDK2.
+Unlike the awesome [Malware's devkit for SE (MDK²-SE)](https://github.com/malforge/mdk2) tools. This is a very basic tool for smashing out a quick and dirty script or vibe coding your way around a survival game. It's lacking some of the features provided by MDK2.
 
 sesc does not enforce the whitelist used by Space Engineers and doesn't warn you about the character limits. Feel free to make a PR.
 
