@@ -237,7 +237,8 @@ class Program {
             "SpaceEngineers.Game.dll",
             "VRage.Game.dll",
             "VRage.Library.dll",
-            "VRage.Math.dll"
+            "VRage.Math.dll",
+            "VRage.dll"
         };
 
     // Search for each required DLL and add it to our neat little list.
@@ -266,7 +267,7 @@ Options:
   -h  --help      Get this help text.";
 
   // How many lines is inside the prefix.:
-  const int IGS_PREFIX_LINES = 26;
+  const int IGS_PREFIX_LINES = 27;
 
   const string IGS_PREFIX =
 @"using Sandbox.Game.EntityComponents;
@@ -280,6 +281,7 @@ using System.Linq;
 using System.Text;
 
 using VRage;
+using VRage.Utils;
 using VRage.Collections;
 using VRage.Game;
 using VRage.Game.Components;
